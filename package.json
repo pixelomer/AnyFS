@@ -1,0 +1,26 @@
+{
+  "name": "anyfs",
+  "version": "1.0.0",
+  "description": "Turn anything into a filesystem",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "tsc && node .",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "fs",
+    "fuse"
+  ],
+  "author": "pixelomer",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "typescript": "^4.5.5"
+  },
+  "optionalDependencies": {
+    "fuse-bindings": "npm:node-fuse-bindings@2.12.4"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.10"
+  }
+}
