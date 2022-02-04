@@ -27,6 +27,9 @@ export class AnyFSWriter extends AnyFSReader {
 	}
 
 	async writeObject<T>(objectID: ObjectID, object: AnyFSObjectRaw<T>) {
+		if (objectID == null) {
+			throw new Error("Object ID must not be null.");
+		}
 		await this._performWrite(async() => {
 			//console.log("[WRITE]", { objectID, ...object });
 
@@ -60,6 +63,9 @@ export class AnyFSWriter extends AnyFSReader {
 	}
 
 	async deleteObject(objectID: ObjectID): Promise<boolean> {
+		if (objectID == null) {
+			throw new Error("Object ID must not be null.");
+		}
 		return await this._performWrite<boolean>(async() => {
 			if (this.FS._FSProvider.deleteObject != null) {
 				return await this.FS._FSProvider.deleteObject(objectID);

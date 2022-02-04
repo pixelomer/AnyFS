@@ -29,6 +29,9 @@ export class AnyFSReader {
 		if (this.invalidated) {
 			throw new Error("This reader was invalidated.");
 		}
+		if (objectID == null) {
+			throw new Error("Object ID must not be null.");
+		}
 		this._ongoingReadCount++;
 		try {
 			let result: AnyFSObjectRaw<T>;
