@@ -67,6 +67,7 @@ export class AnyFSWriter extends AnyFSReader {
 			throw new Error("Object ID must not be null.");
 		}
 		return await this._performWrite<boolean>(async() => {
+			this.FS._cache.delete(objectID);
 			if (this.FS._FSProvider.deleteObject != null) {
 				return await this.FS._FSProvider.deleteObject(objectID);
 			}
