@@ -57,7 +57,11 @@ export class AnyFSFile extends AnyFSObject {
 		const data = Buffer.allocUnsafe(initialBufferSize);
 		let copiedLength = 0;
 		for (let i=firstChunkIndex; i<=lastChunkIndex; i++) {
-			const chunk = await reader.readObject(metadata.chunks[i]);
+			const chunkID = metadata.chunks[i];
+			if (chunkID == null) {
+				break;
+			}
+			const chunk = await reader.readObject(chunkID);
 			copiedLength += chunk.data.copy(
 				data,
 				(i - firstChunkIndex) * this.FS.chunkSize,
