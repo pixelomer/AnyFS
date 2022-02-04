@@ -1,4 +1,5 @@
 import { AnyFS } from "./anyfs";
+import { AnyFSFileChunk } from "./fs-chunk";
 import { AnyFSFile } from "./fs-file";
 import { AnyFSFolder } from "./fs-folder";
 import { ObjectID } from "./internal-types";
@@ -21,6 +22,10 @@ export class AnyFSObject {
 	}
 
 	isFolder(): this is AnyFSFolder {
+		return false;
+	}
+
+	isFileChunk(): this is AnyFSFileChunk {
 		return false;
 	}
 }

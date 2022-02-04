@@ -84,7 +84,7 @@ export class AnyFSFolder extends AnyFSObject {
 	static async create(FS: AnyFS, parent: AnyFSObject, name: string): Promise<AnyFSFolder> {
 		const writer = await FS._getWrite();
 		try {
-			const objectID = await FS._FSProvider.createObject();
+			const objectID = await writer.createObject();
 			await writer.writeObject<AnyFSFolderMetadata>(objectID, {
 				metadata: {
 					type: "folder",

@@ -1,4 +1,5 @@
 import { AnyFS } from "./anyfs";
+import { AnyFSFileChunk } from "./fs-chunk";
 import { AnyFSObject } from "./fs-object";
 import { AnyFSDataMetadata, AnyFSFileMetadata, AnyFSFileStat } from "./internal-types";
 import { AnyFSReader } from "./reader";
@@ -12,7 +13,7 @@ export class AnyFSFile extends AnyFSObject {
 	static async create(FS: AnyFS, parent: AnyFSObject, name: string): Promise<AnyFSFile> {
 		const writer = await FS._getWrite();
 		try {
-			const objectID = await FS._FSProvider.createObject();
+			const objectID = await writer.createObject();
 			await writer.writeObject<AnyFSFileMetadata>(objectID, {
 				metadata: {
 					type: "file",
@@ -21,7 +22,6 @@ export class AnyFSFile extends AnyFSObject {
 				},
 				data: null
 			});
-			writer.release();
 			return new this(FS, parent, name, objectID);
 		}
 		finally {
@@ -148,15 +148,16 @@ export class AnyFSFile extends AnyFSObject {
 		// Create new data objects and modify existing ones
 		let i: number, seek: number;
 		for (i=startIndex, seek=0; seek<newData.length; i+=1, seek+=this.FS.chunkSize) {
-			let chunk = chunks[i];
-			if (chunk == null) {
-				chunk = await writer.createObject();
-				chunks[i] = chunk;
+			let chunk: AnyFSFileChunk;
+			const chunkData = newData.slice(seek, seek + this.FS.chunkSize);
+			if (chunks[i] == null) {
+				chunk = await AnyFSFileChunk.create(this.FS, this, writer, chunkData);
+				chunks[i] = chunk.objectID;
 			}
-			await writer.writeObject<AnyFSDataMetadata>(chunk, {
-				metadata: { type: "data" },
-				data: newData.slice(seek, seek + this.FS.chunkSize)
-			});
+			else {
+				chunk = new AnyFSFileChunk(this.FS, this, chunks[i]);
+				await chunk.updateData(chunkData);
+			}
 		}
 		chunks.splice(i);
 
