@@ -1,4 +1,4 @@
-export type ObjectID = any;
+export type ObjectID = string | number;
 
 export interface AnyFSMetadata {
 	type: string,
