@@ -1,6 +1,5 @@
 import { AnyFS, AnyFSProvider } from "../anyfs";
-import { writeFile, readFile, unlink } from "fs/promises";
-import { existsSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from "fs";
 import crypto from "crypto";
 import path from "path";
 
@@ -11,10 +10,10 @@ class LocalFSProvider implements AnyFSProvider {
 		return path.join(this.storagePath, objectID.toString());
 	}
 	async readObject(objectID: number) {
-		return Buffer.from(await readFile(this.path(objectID), 'utf-8'), 'base64');
+		return Buffer.from(readFileSync(this.path(objectID), 'utf-8'), 'base64');
 	}
 	async writeObject(objectID: number, data: Buffer) {
-		return await writeFile(this.path(objectID), data.toString('base64'));
+		return writeFileSync(this.path(objectID), data.toString('base64'));
 	}
 	async createObject() {
 		let objectID: number;
@@ -29,7 +28,7 @@ class LocalFSProvider implements AnyFSProvider {
 		try {
 			const path = this.path(objectID);
 			if (existsSync(path)) {
-				await unlink(path);
+				unlinkSync(path);
 				return true;
 			}
 			return false;

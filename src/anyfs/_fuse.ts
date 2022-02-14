@@ -1,5 +1,9 @@
 import fuse from "fuse-bindings";
 import fs from "fs";
+import path from "path";
+import os from "os";
+import crypto from "crypto";
+import util from "util";
 import { AnyFSFile } from "./fs-file";
 import { AnyFS } from "./anyfs";
 import { AnyFSFolder } from "./fs-folder";
@@ -10,41 +14,134 @@ class OpenFile {
 	fd: number
 	file: AnyFSFile
 	flags: number
+	tmpdir: string
+	previousWrite: {
+		position: number,
+		data: Buffer
+	}
 
-	private _writeData: Buffer
+	private _IOLock: Promise<void>;
+	private _writeLock: Promise<void>;
+	private _localFilePath: string;
+	private _localFileHandle: fs.promises.FileHandle;
+	private _closed: boolean;
 
-	constructor(file: AnyFSFile, path: string, flags: number, fd: number) {
+	constructor(file: AnyFSFile, path: string, flags: number, fd: number, tmpdir: string) {
 		this.fd = fd;
 		this.path = path;
 		this.file = file;
 		this.flags = flags;
+		this.tmpdir = tmpdir;
 	}
 
-	/** Writes only append. Length and position are ignored. */
-	async write(position: number, length: number, data: Buffer) {
-		if (this._writeData == null) {
-			this._writeData = Buffer.alloc(0);
+	private async _canPerformIO() {
+		await this._IOLock;
+		if (this._closed) {
+			throw new Error("Attempted to perform I/O on a closed file.")
 		}
-		this._writeData = Buffer.concat([ this._writeData, data ]);
-		if (this._writeData.length >= this.file.FS.chunkSize * 4) {
-			await this.flush();
+	}
+
+	private async _cleanup() {
+		if (this._localFileHandle != null) {
+			try { await this._localFileHandle.close() }
+			catch {}
+			this._localFileHandle = null;
 		}
+		if (this._localFilePath != null) {
+			try { fs.unlinkSync(this._localFilePath); }
+			catch {}
+			this._localFilePath = null;
+		}
+	}
+
+	async close() {
+		await this._IOLock;
+		this._closed = true;
+		if (this._localFileHandle != null) {
+			await this._localFileHandle.close();
+			const fileData = fs.readFileSync(this._localFilePath);
+			await this.file.writeAll(fileData);
+		}
+		await this._cleanup();
+	}
+
+	async write(data: Buffer, position: number): Promise<number> {
+		await this._canPerformIO();
+		if (this._localFileHandle == null) {
+			// Lock I/O until the download is finished
+			let unlockIO: () => void;
+			this._IOLock = new Promise((resolve) => {
+				unlockIO = resolve;
+			});
+
+			try {
+				// Download the whole file
+				const objectIDHash = crypto
+					.createHash('sha256')
+					.update(this.file.objectID.toString())
+					.digest('hex')
+					+ `_${this.fd.toString()}`;
+				this._localFilePath = path.join(this.tmpdir, objectIDHash);
+				const writeStream = fs.createWriteStream(this._localFilePath);
+				try {
+					await this.file.readAll(async(chunk, index, total) => {
+						await util.promisify(writeStream.write.bind(writeStream))(chunk);
+					});
+				}
+				finally {
+					await util.promisify(writeStream.end.bind(writeStream))();
+					await util.promisify(writeStream.close.bind(writeStream))();
+				}
+				this._localFileHandle = await fs.promises.open(this._localFilePath, "r+");
+			}
+			catch (err) {
+				// Something went wrong, delete the file and rethrow
+				this._cleanup();
+				throw err;
+			}
+			finally {
+				// Unlock I/O
+				unlockIO();
+			}
+		}
+	
+		await this._writeLock;
+		let unlockWrite: () => void;
+		this._writeLock = new Promise((resolve) => {
+			unlockWrite = resolve;
+		});
+		let bytesWritten: number;
+		try {
+			/*console.log("Writing data", {
+				data: data,
+				plaintextData: data.toString('utf-8'),
+				offset: 0,
+				length: data.length,
+				positon: position
+			})*/
+			const result = await this._localFileHandle.write(data, 0, data.length, position);
+			//await this._localFileHandle.sync();
+			this.previousWrite = { data, position };
+			bytesWritten = result.bytesWritten;
+		}
+		finally {
+			unlockWrite();
+		}
+		return bytesWritten;
 	}
 
 	async read(position: number, length: number): Promise<Buffer> {
-		if ((this._writeData != null) && (this._writeData.length !== 0)) {
-			throw new Error("Cannot read while a write is pending.");
+		await this._canPerformIO()
+		if (this._localFileHandle != null) {
+			const buffer = Buffer.allocUnsafe(length);
+			const result = await this._localFileHandle.read(buffer, 0, length, position);
+			const finalBuffer = Buffer.allocUnsafe(result.bytesRead);
+			result.buffer.copy(finalBuffer);
+			return finalBuffer;
 		}
-		return await this.file.read(position, length);
-	}
-
-	async flush() {
-		if (this._writeData == null) {
-			return;
+		else {
+			return await this.file.read(position, length);
 		}
-		const newData = this._writeData;
-		this._writeData = Buffer.alloc(0);
-		await this.file.append(newData);
 	}
 }
 
@@ -55,6 +152,8 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 	const blockCount = options.reportedBlocks ?? (1024 * 1024);
 
 	const root = await FS.root();
+
+	const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "anyfs"));
 
 	// Used for silencing TypeScript errors related to
 	// interface properties
@@ -138,7 +237,7 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 					return;
 				}
 				fd = nextFd++;
-				const openFile = new OpenFile(file, path, flags, fd);
+				const openFile = new OpenFile(file, path, flags, fd, tmpdir);
 				openFiles.set(fd, openFile);
 				callback(0, fd);
 			}
@@ -178,12 +277,10 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 
 		async read(path, fd, buffer, length, position, callback: (bytesReadOrError: number) => void) {
 			log("read(%s, %d, <buf>, %d, %d)", path, fd, length, position);
-			if (!openFiles.has(fd)) {
-				log(new Error("openFiles does not have fd: " + fd));
-				callback(fuse.EIO);
-				return;
-			}
 			try {
+				if (!openFiles.has(fd)) {
+					throw new Error("openFiles does not have fd: " + fd);
+				}
 				const file = openFiles.get(fd);
 				const data = await file.read(position, length);
 				const copied = data.copy(buffer);
@@ -208,7 +305,14 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 					return;
 				}
 				const contents = await file.readAll();
-				await file.writeAll(contents.slice(0, size));
+				if (contents.length > size) {
+					await file.writeAll(contents.slice(0, size));
+				}
+				else if (contents.length < size) {
+					//FIXME: This is a waste of RAM
+					const buffer = Buffer.alloc(size - contents.length);
+					await file.append(buffer);
+				}
 				callback(0);
 			}
 			catch (err) {
@@ -221,7 +325,7 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 			log("release(%s, %d)", path, fd);
 			const openFile = openFiles.get(fd);
 			if (openFile != null) {
-				await openFile.flush();
+				await openFile.close();
 			}
 			openFiles.delete(fd);
 			callback(0);
@@ -296,11 +400,13 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 		},
 
 		async write(path: string, fd: number, data: Buffer, length: number, position: number, callback: (bytesWrittenOrError: number) => void) {
-			log("write(%s, %d, <buf>, %d, %d)", path, fd, length, position);
+			log("write(%s, %d, <buf: %d>, %d, %d)", path, fd, data.length, length, position);
 			try {
 				const file = openFiles.get(fd);
-				await file.write(position, length, data);
-				callback(data.length);
+				const copiedData = Buffer.alloc(data.length);
+				data.copy(copiedData);
+				const writtenBytes = await file.write(copiedData, position);
+				callback(writtenBytes);
 			}
 			catch (err) {
 				log(err);

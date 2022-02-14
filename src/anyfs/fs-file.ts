@@ -5,6 +5,8 @@ import { AnyFSDataMetadata, AnyFSFileMetadata, AnyFSFileStat } from "./internal-
 import { AnyFSReader } from "./reader";
 import { AnyFSWriter } from "./writer";
 
+export type AnyFSFileReadCallback = (chunk: Buffer, index: number, total: number) => unknown;
+
 export class AnyFSFile extends AnyFSObject {
 	isFile() {
 		return true;
@@ -29,11 +31,25 @@ export class AnyFSFile extends AnyFSObject {
 		}
 	}
 
-	async readAll(): Promise<Buffer> {
+	async readAll(): Promise<Buffer>;
+	async readAll(progress: AnyFSFileReadCallback): Promise<number>;
+
+	async readAll(progress?: AnyFSFileReadCallback): Promise<Buffer | number> {
 		const reader = await this.FS._getRead();
 		try {
 			const metadata = (await reader.readObject<AnyFSFileMetadata>(this.objectID)).metadata;
-			return await this._read(reader, 0, metadata.size);
+			if (progress != null) {
+				const chunkSize = this.FS.chunkSize;
+				const count = Math.ceil(metadata.size / this.FS.chunkSize);
+				for (let i=0; i<count; i++) {
+					const chunk = await this._read(reader, i * chunkSize, chunkSize);
+					await progress(chunk, i, count);
+				}
+				return metadata.size;
+			}
+			else {
+				return await this._read(reader, 0, metadata.size);
+			}
 		}
 		finally {
 			reader.release();

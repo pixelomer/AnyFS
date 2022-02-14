@@ -1,7 +1,6 @@
 import path from "path";
 import { LocalFS, LocalFSAuth } from "./examples/local-fs";
-import { existsSync, mkdirSync } from "fs";
-import { readFile, writeFile } from "fs/promises";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 
 import { AnyFSProvider, AnyFS, AnyFSFile, AnyFSFolder, fuseMount } from "./anyfs";
 export { AnyFSProvider, AnyFS, AnyFSFile, AnyFSFolder, fuseMount };
@@ -19,7 +18,7 @@ async function main() {
 	const authDataPath = path.join(storagePath, "auth.json");
 	let authData: LocalFSAuth;
 	if (existsSync(authDataPath)) {
-		const fileData = JSON.parse(await readFile(authDataPath, 'utf-8'));
+		const fileData = JSON.parse(readFileSync(authDataPath, 'utf-8'));
 		authData = {
 			key: Buffer.from(fileData.key, 'base64'),
 			root: fileData.root
@@ -31,7 +30,7 @@ async function main() {
 			key: authData.key.toString('base64'),
 			root: authData.root
 		};
-		await writeFile(authDataPath, JSON.stringify(outputData));
+		writeFileSync(authDataPath, JSON.stringify(outputData));
 	}
 	const fs = LocalFS.authenticate(storagePath, authData);
 	await fuseMount(fs, mountPath, { verbose: true }, () => {
