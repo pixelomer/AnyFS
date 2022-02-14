@@ -96,7 +96,7 @@ class OpenFile {
 			}
 			catch (err) {
 				// Something went wrong, delete the file and rethrow
-				this._cleanup();
+				await this._cleanup();
 				throw err;
 			}
 			finally {
