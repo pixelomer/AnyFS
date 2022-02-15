@@ -146,8 +146,10 @@ class OpenFile {
 }
 
 export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMountOptions, onDestroy?: () => void) {
+	mountPoint = fs.realpathSync(mountPoint);
 	options = options ? { ...options } : {};
 	const log = (options.verbose ?? false) ? console.log.bind(console) : ()=>{};
+	const isReadonly = options.allowWrite ? !options.allowWrite : true;
 	const blockSize = options.reportedBlockSize ?? 512;
 	const blockCount = options.reportedBlocks ?? (1024 * 1024);
 
@@ -251,6 +253,10 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 		},
 
 		async mknod(path: string, mode: number, dev: number, callback: (code: number) => void) {
+			if (isReadonly) {
+				callback(fuse.EROFS);
+				return;
+			}
 			log("mknod(%s, %d, %d)", path, mode, dev);
 			try {
 				if (!(mode & fs.constants.S_IFREG)) {
@@ -293,6 +299,10 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 		},
 
 		async truncate(path: string, size: number, callback: (code: number) => void) {
+			if (isReadonly) {
+				callback(fuse.EROFS);
+				return;
+			}
 			log("truncate(%s, %d)", path, size);
 			try {
 				const file = await root.atPath(path);
@@ -332,6 +342,10 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 		},
 
 		async rmdir(path: string, callback: (code: number) => void) {
+			if (isReadonly) {
+				callback(fuse.EROFS);
+				return;
+			}
 			log("rmdir(%s)", path);
 			try {
 				const file = await FS.atPath(path);
@@ -359,7 +373,33 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 			}
 		},
 
+		async access(path: string, mode: number, callback: (code: number) => void) {
+			// access() is called a lot
+			//log("access(%s, %d)", path, mode);
+			try {
+				const file = await root.atPath(path);
+				if (file == null) {
+					callback(fuse.ENOENT);
+					return;
+				}
+				if (isReadonly && (mode & fs.constants.W_OK)) {
+					callback(fuse.EROFS);
+				}
+				else {
+					callback(0);
+				}
+			}
+			catch (err) {
+				log(err);
+				callback(fuse.EIO);
+			}
+		},
+
 		async unlink(path: string, callback: (code: number) => void) {
+			if (isReadonly) {
+				callback(fuse.EROFS);
+				return;
+			}
 			log("unlink(%s)", path);
 			try {
 				const file = await FS.atPath(path);
@@ -379,6 +419,10 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 		},
 
 		async mkdir(path: string, mode: number, callback: (code: number) => void) {
+			if (isReadonly) {
+				callback(fuse.EROFS);
+				return;
+			}
 			log("mkdir(%s, %d)", path, mode);
 			try {
 				const parent = await root.parentForPath(path);
@@ -400,6 +444,10 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 		},
 
 		async write(path: string, fd: number, data: Buffer, length: number, position: number, callback: (bytesWrittenOrError: number) => void) {
+			if (isReadonly) {
+				callback(fuse.EROFS);
+				return;
+			}
 			log("write(%s, %d, <buf: %d>, %d, %d)", path, fd, data.length, length, position);
 			try {
 				const file = openFiles.get(fd);
@@ -415,6 +463,10 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 		},
 		
 		async rename(source: string, dest: string, callback: (code: number) => void) {
+			if (isReadonly) {
+				callback(fuse.EROFS);
+				return;
+			}
 			log("rename(%s, %s)", source, dest);
 			try {
 				const sourceFile = await root.atPath(source);
@@ -446,6 +498,10 @@ export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMo
 		},
 
 		chmod(path: string, mode: number, callback: (code: number) => void) {
+			if (isReadonly) {
+				callback(fuse.EROFS);
+				return;
+			}
 			callback(0);
 		},
 

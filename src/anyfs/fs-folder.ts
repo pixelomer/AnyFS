@@ -5,6 +5,10 @@ import { AnyFSFolderEntry, AnyFSFolderMetadata, ObjectID } from "./internal-type
 import { AnyFSReader } from "./reader";
 import { AnyFSWriter } from "./writer";
 
+export interface AnyFSFolder {
+	parent: AnyFSFolder;
+}
+
 export class AnyFSFolder extends AnyFSObject {
 	isFolder() {
 		return true;
@@ -39,7 +43,6 @@ export class AnyFSFolder extends AnyFSObject {
 				continue;
 			}
 			else if (component === '..') {
-				//@ts-ignore
 				folder = folder.parent;
 				continue;
 			}
@@ -59,6 +62,10 @@ export class AnyFSFolder extends AnyFSObject {
 	}
 
 	async atPath(path: string): Promise<AnyFSFile | AnyFSFolder> {
+		if (path.startsWith("/") && (this.name !== "/")) {
+			const root = await this.FS.root();
+			return await root.atPath(path);
+		}
 		const components = AnyFSFolder._splitComponents(path);
 		return await this._atPath(components);
 	}
@@ -121,6 +128,17 @@ export class AnyFSFolder extends AnyFSObject {
 			return new AnyFSFolder(this.FS, this, name, entry.objectID);
 		}
 		throw new Error("The requested file has an unknown type. It might be corrupted.");
+	}
+
+	getAbsolutePath() {
+		const components = [];
+		let folder: AnyFSFolder = this;
+		while (folder.name !== "/") {
+			components.push(folder.name);
+			folder = folder.parent;
+		}
+		components.reverse();
+		return `/${components.join("/")}`;
 	}
 
 	async exists(name: string): Promise<boolean> {

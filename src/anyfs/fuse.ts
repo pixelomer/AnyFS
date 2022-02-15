@@ -3,7 +3,8 @@ import { AnyFS } from "./anyfs";
 export interface AnyFSMountOptions {
 	verbose?: boolean,
 	reportedBlocks?: number,
-	reportedBlockSize?: number
+	reportedBlockSize?: number,
+	allowWrite?: boolean
 }
 
 export async function fuseMount(FS: AnyFS, mountPoint: string, options?: AnyFSMountOptions, onDestroy?: () => void) {

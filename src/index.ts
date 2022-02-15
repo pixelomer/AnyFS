@@ -1,9 +1,10 @@
 import path from "path";
 import { LocalFS, LocalFSAuth } from "./examples/local-fs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { FtpSrv } from "ftp-srv";
 
-import { AnyFSProvider, AnyFS, AnyFSFile, AnyFSFolder, fuseMount } from "./anyfs";
-export { AnyFSProvider, AnyFS, AnyFSFile, AnyFSFolder, fuseMount };
+import { AnyFSProvider, AnyFS, AnyFSFile, AnyFSFolder } from "./anyfs";
+export { AnyFSProvider, AnyFS, AnyFSFile, AnyFSFolder };
 
 async function main() {
 	if (process.argv.length < 4) {
@@ -33,9 +34,21 @@ async function main() {
 		writeFileSync(authDataPath, JSON.stringify(outputData));
 	}
 	const fs = LocalFS.authenticate(storagePath, authData);
-	await fuseMount(fs, mountPath, { verbose: true }, () => {
+	await fs.fuseMount(mountPath, { verbose: true }, () => {
 		process.exit(0);
 	});
+	const ftpServer = new FtpSrv({
+		anonymous: true,
+		url: "http://127.0.0.1:2121",
+		pasv_url: "http://127.0.0.1:2121"
+	});
+	ftpServer.on("login", async(loginData, resolve, reject) => {
+		resolve({
+			fs: await fs.getFTP(),
+			cwd: "/"
+		});
+	});
+	ftpServer.listen();
 }
 
 if (require.main === module) {

@@ -4,6 +4,8 @@ import { AnyFSWriter } from "./writer";
 import { AnyFSFile } from "./fs-file";
 import { AnyFSFolder } from "./fs-folder";
 import { ObjectID, AnyFSObjectRaw, AnyFSFolderMetadata } from "./internal-types";
+import * as fuse from "./fuse";
+import { getFTP } from "./ftp";
 
 export class AnyFS {
 	_AESKey: Buffer;
@@ -92,6 +94,14 @@ export class AnyFS {
 			reader.release();
 		}
 		return new AnyFSFolder(this, null, "/", this._rootObjectID);
+	}
+
+	fuseMount(mountPoint: string, options?: fuse.AnyFSMountOptions, onDestroy?: () => void) {
+		return fuse.fuseMount(this, mountPoint, options, onDestroy);
+	}
+
+	getFTP() {
+		return getFTP(this);
 	}
 
 	constructor(FSProvider: AnyFSProvider, AESKey: Buffer, chunkSize: number, rootID: ObjectID) {

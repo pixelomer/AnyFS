@@ -1,3 +1,4 @@
+import { AnyFSFolder } from ".";
 import { AnyFS } from "./anyfs";
 import { AnyFSFileChunk } from "./fs-chunk";
 import { AnyFSObject } from "./fs-object";
@@ -6,6 +7,10 @@ import { AnyFSReader } from "./reader";
 import { AnyFSWriter } from "./writer";
 
 export type AnyFSFileReadCallback = (chunk: Buffer, index: number, total: number) => unknown;
+
+export interface AnyFSFile {
+	parent: AnyFSFolder;
+}
 
 export class AnyFSFile extends AnyFSObject {
 	isFile() {
@@ -143,6 +148,11 @@ export class AnyFSFile extends AnyFSObject {
 		finally {
 			writer.release();
 		}
+	}
+
+	getAbsolutePath() {
+		const parentPath = this.parent.getAbsolutePath();
+		return `${parentPath}/${this.name}`;
 	}
 
 	async writeAll(newData: Buffer): Promise<void> {
