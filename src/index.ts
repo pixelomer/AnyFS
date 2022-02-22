@@ -42,10 +42,15 @@ async function main() {
 		pasv_url: "http://127.0.0.1:2121"
 	});
 	ftpServer.on("login", async(loginData, resolve, reject) => {
-		resolve({
-			fs: await fs.getFTP(),
-			cwd: "/"
-		});
+		try {
+			resolve({
+				fs: await fs.getFTP(),
+				cwd: "/"
+			});
+		}
+		catch (err) {
+			reject(err);	
+		}
 	});
 	ftpServer.listen();
 }
