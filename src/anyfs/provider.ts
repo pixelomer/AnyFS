@@ -34,11 +34,8 @@ export interface AnyFSProvider {
 
 	/**
 	 * Deletes an object if possible. This object ID will never
-	 * be used again if deletion is successful.
-	 * 
-	 * **Warning:** Do not implement this function if you aren't
-	 * able to delete objects. When deletion is impossible, AnyFS
-	 * will reuse unused objects.
+	 * be used again if deletion is successful. Do not implement
+	 * this function if you aren't able to delete objects.
 	 * @returns `true` if the deletion was successful, `false`
 	 * otherwise.
 	 */
