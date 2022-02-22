@@ -21,13 +21,14 @@ export class AnyFS {
 
 	_getRead() {
 		return new Promise<AnyFSReader>((resolve) => {
-			if (this._currentWriter == null) {
+			if ((this._currentWriter == null) && (this._awaitingWriters.length === 0)) {
 				const reader = new AnyFSReader(this);
 				this._currentReaders.add(reader);
 				resolve(reader);
-				return;
 			}
-			this._awaitingReaders.add(resolve);
+			else {
+				this._awaitingReaders.add(resolve);
+			}
 		});
 	}
 
