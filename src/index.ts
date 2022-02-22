@@ -3,8 +3,7 @@ import { LocalFS, LocalFSAuth } from "./examples/local-fs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { FtpSrv } from "ftp-srv";
 
-import { AnyFSProvider, AnyFS, AnyFSFile, AnyFSFolder } from "./anyfs";
-export { AnyFSProvider, AnyFS, AnyFSFile, AnyFSFolder };
+export * from "./anyfs";
 
 async function main() {
 	if (process.argv.length < 4) {
