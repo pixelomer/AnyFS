@@ -18,14 +18,14 @@ export class AnyFSObject {
 	}
 
 	isFile(): this is AnyFSFile {
-		return false;
+		return this instanceof AnyFSFile;
 	}
 
 	isFolder(): this is AnyFSFolder {
-		return false;
+		return this instanceof AnyFSFolder;
 	}
 
 	isFileChunk(): this is AnyFSFileChunk {
-		return false;
+		return this instanceof AnyFSFileChunk;
 	}
 }

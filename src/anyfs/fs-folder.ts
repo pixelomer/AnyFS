@@ -10,10 +10,6 @@ export interface AnyFSFolder {
 }
 
 export class AnyFSFolder extends AnyFSObject {
-	isFolder() {
-		return true;
-	}
-	
 	private async _listContents(reader: AnyFSReader): Promise<AnyFSFolderEntry[]> {
 		const objectData = await reader.readObject<AnyFSFolderMetadata>(this.objectID);
 		return objectData.metadata.entries;

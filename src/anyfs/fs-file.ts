@@ -13,10 +13,6 @@ export interface AnyFSFile {
 }
 
 export class AnyFSFile extends AnyFSObject {
-	isFile() {
-		return true;
-	}
-
 	static async create(FS: AnyFS, parent: AnyFSObject, name: string): Promise<AnyFSFile> {
 		const writer = await FS._getWrite();
 		try {

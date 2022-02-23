@@ -5,10 +5,6 @@ import { AnyFSReader } from "./reader";
 import { AnyFSWriter } from "./writer";
 
 export class AnyFSFileChunk extends AnyFSObject {
-	isFileChunk(): this is AnyFSFileChunk {
-		return true;
-	}
-
 	constructor(FS: AnyFS, parent: AnyFSObject, objectID: ObjectID) {
 		super(FS, parent, null, objectID);
 	}
