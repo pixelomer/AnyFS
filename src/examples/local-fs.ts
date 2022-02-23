@@ -10,10 +10,10 @@ class LocalFSProvider implements AnyFSProvider {
 		return path.join(this.storagePath, objectID.toString());
 	}
 	async readObject(objectID: number) {
-		return Buffer.from(readFileSync(this.path(objectID), 'utf-8'), 'base64');
+		return readFileSync(this.path(objectID));
 	}
 	async writeObject(objectID: number, data: Buffer) {
-		return writeFileSync(this.path(objectID), data.toString('base64'));
+		return writeFileSync(this.path(objectID), data);
 	}
 	async createObject() {
 		let objectID: number;
