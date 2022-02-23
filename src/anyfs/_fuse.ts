@@ -59,7 +59,7 @@ class OpenFile {
 		this._closed = true;
 		if (this._localFileHandle != null) {
 			await this._localFileHandle.close();
-			const fileData = fs.readFileSync(this._localFilePath);
+			const fileData = await fs.promises.readFile(this._localFilePath);
 			await this.file.writeAll(fileData);
 		}
 		await this._cleanup();

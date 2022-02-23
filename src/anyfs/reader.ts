@@ -50,7 +50,7 @@ export class AnyFSReader {
 
 				// Parse data (JSON and binary sections)
 				const jsonEnd = decrypted.indexOf(0);
-				const jsonData = decrypted.slice(0, (jsonEnd === -1) ? undefined : jsonEnd);
+				const jsonData = (jsonEnd !== -1) ? decrypted.slice(0, jsonEnd) : decrypted;
 				const metadata = JSON.parse(jsonData.toString('utf-8'));
 				const data = (jsonEnd !== -1) ? decrypted.slice(jsonEnd + 1) : null;
 
