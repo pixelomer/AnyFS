@@ -4,7 +4,7 @@ A simple filesystem which stores metadata using JSON. Made with the goal of simp
 
 ## Usage
 
-The smallest unit of storage in AnyFS is called an object. Each object stores a JSON object, and optionally a null byte followed by binary data. Object data is encrypted with AES-256. Each object has a unique ID which can either be a number or a string.
+The smallest unit of storage in AnyFS is called an object. Each object stores JSON data, and optionally a null byte followed by binary data. Object data is encrypted with AES-256. Each object has a unique ID which can either be a number or a string.
 
 Each AnyFS filesystem has a data provider. This data provider is responsible for creating, reading, updating and deleting objects, and nothing else. The only job of a data provider is storing and retrieving binary data. It does not need to (and should not try to) decrypt or parse this data.
 
