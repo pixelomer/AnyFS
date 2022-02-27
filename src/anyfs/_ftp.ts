@@ -1,8 +1,9 @@
-import { FileSystem } from "ftp-srv";
 import { AnyFSFolder } from "./fs-folder";
 import { Readable, Writable } from "stream";
 import { AnyFS } from "./anyfs";
 import { AnyFSFile } from "./fs-file";
+//@ts-ignore
+import { FileSystem } from "ftp-srv";
 
 class AnyFSFTPFileSystem extends FileSystem {
 	anyfsCwd: AnyFSFolder;

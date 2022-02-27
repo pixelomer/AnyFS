@@ -1,4 +1,3 @@
-import fuse from "fuse-bindings";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -8,6 +7,8 @@ import { AnyFSFile } from "./fs-file";
 import { AnyFS } from "./anyfs";
 import { AnyFSFolder } from "./fs-folder";
 import { AnyFSMountOptions } from "./fuse";
+//@ts-ignore
+import fuse from "fuse-bindings";
 
 class OpenFile {
 	path: string
