@@ -8,7 +8,14 @@ The smallest unit of storage in AnyFS is called an object. Each object stores JS
 
 Each AnyFS filesystem has a data provider. This data provider is responsible for creating, reading, updating and deleting objects, and nothing else. The only job of a data provider is storing and retrieving binary data. It does not need to (and should not try to) decrypt or parse this data.
 
-You can create your own AnyFS filesystem by implementing your own AnyFS data provider. The functions you need to implement are `createObject()`, `writeObject(objectID, data)` and `readObject(objectID)`. `deleteObject(objectID)` is optional and filesystem functionality will not be affected if it is missing, but it is highly recommended that you implement it if possible.
+You can create your own AnyFS filesystem by implementing your own AnyFS data provider. The functions you need to implement are `createObject()`, `writeObject(objectID, data)` and `readObject(objectID)`. There is also an optional `deleteObject(objectID)` method. Filesystem functionality will not be affected if it is missing, but it is highly recommended that you implement it if possible.
+
+See [src/anyfs/provider.ts](https://github.com/pixelomer/AnyFS/blob/main/src/anyfs/provider.ts) for details on implementing a new AnyFS data provider.
+
+### Usage Examples
+
+- See [src/examples/local-fs.ts](https://github.com/pixelomer/AnyFS/blob/main/src/examples/local-fs.ts) and [src/index.ts](https://github.com/pixelomer/AnyFS/blob/main/src/index.ts) for an example AnyFS implementation that stores objects as files. Also useful when debugging AnyFS itself.
+- [discord-fs](https://github.com/pixelomer/discord-fs) is an AnyFS filesystem for storing files as Discord messages.
 
 ## Functionality
 
@@ -24,4 +31,4 @@ AnyFS comes with LocalFS, an AnyFS data provider that stores AnyFS data in the l
 npm start /path/to/storage /path/to/mnt
 ```
 
-This will mount a LocalFS filesystem at `/path/to/mnt` using the data in `/path/to/storage`. If the data does not exist, it will initialize a new filesystem.
+This will mount a read-only LocalFS filesystem at `/path/to/mnt` using the data in `/path/to/storage`, initializing a new filesystem if necessary. Additionally, an FTP server will be started on `http://127.0.0.1:2121`.
